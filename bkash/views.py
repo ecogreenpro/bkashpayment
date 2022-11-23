@@ -239,3 +239,7 @@ class BkashRefundView(LoginRequiredMixin, BkashPayment, View):
             }
 
             return render(request, 'bkash_refund.html', context)
+
+
+def pay_bkash(request):
+    return render(request, 'pay_bkash.html')
