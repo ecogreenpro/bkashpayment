@@ -4,7 +4,7 @@ from django.shortcuts import render
 
 
 def tokenized_get_token(request):
-    get_token_url = "https://checkout.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout/token/grant"
+    get_token_url = "https://checkout.sandbox.bka.sh/v1.2.0-beta/checkout/token/grant"
 
     get_token_payload = {
         "app_key": "5tunt4masn6pv2hnvte1sb5n3j",

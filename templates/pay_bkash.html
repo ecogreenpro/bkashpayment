@@ -1,120 +1,80 @@
-{% load static %}
-<!DOCTYPE html>
-<html>
+<!doctype html >
+<html lang="en">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>Merchant</title>
-    <meta name="viewport" content="width=device-width" ,="" initial-scale="1.0/">
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrom=1">
-    <script src="{% static 'jquery-1.8.3.min.js' %}"></script>
-    <script id="myScript"
-            src="https://scripts.sandbox.bka.sh/versions/1.2.0-beta/checkout/bKash-checkout-sandbox.js"></script>
+    <meta charset="utf-8">
+
+    <title> The HTML5 Herald </title>
+    <meta name="description" content="The HTML5 Herald">
+    <meta name="author" content="SitePoint">
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"
+            integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+            crossorigin="anonymous"></script>
+    <script src="https://scripts.sandbox.bka.sh/versions/1.1.0-beta/checkout/bKash-checkout-sandbox.js"></script>
 
 </head>
 
 <body>
+<a href="javascript:void(0)" id="bKash_button"> Pay with bKash < /a > <br>
+    <a href="{% url 'payment:bkash_refund' %}"> Bkash Refund < /a > <br> <br>
 
-<button id="bKash_button">Pay With bKash</button>
+        <hr>
 
-<script type="text/javascript">
-
-    var accessToken = '';
-    $(document).ready(function () {
-        $.ajax({
-            url: "gettoken/",
-            type: 'POST',
-            contentType: 'application/json',
-            success: function (data) {
-                console.log(data.id_token);
-                sessionStorage.setItem("token_id", data.id_token);
-            },
-            error: function (data) {
-                console.log('error', data)
-            }
-        });
+        <script type="text/javascript">
+            var paymentID = '';
+            bKash.init({
+                paymentMode: 'checkout', //fixed value ‘checkout’
 
 
-        var paymentRequest;
-        paymentRequest = {amount: '105', intent: 'sale'};
-        console.log(JSON.stringify(paymentRequest));
-
-        bKash.init({
-            paymentMode: 'checkout',
-            paymentRequest: paymentRequest,
-            createRequest: function (request) {
-                console.log('=> createRequest (request) :: ');
-                console.log(request);
-                token = sessionStorage.getItem("token_id");
-                $.ajax({
-                    url: "create-payment/" + token,
-                    type: 'GET',
-                    contentType: 'application/json',
-                    success: function (data) {
-                        console.log('got data from create  ..');
-                        console.log('Sucess data ::=>');
-                        console.log(data.paymentID);
-                        sessionStorage.setItem("payment_id", data.paymentID);
-
-                        var obj = JSON.parse(data.paymentID);
-
-                        if (data && obj != null) {
-                            paymentID = obj.paymentID;
-                            bKash.create().onSuccess(obj);
-                        } else {
-                            console.log('error');
+                paymentRequest: {
+                    amount: 1500,
+                    intent: 'sale'
+                },
+                createRequest: function (request) {
+                    //request object is basically the paymentRequest object, automatically pushed by the script in createRequest method
+                    $.ajax({
+                        url: '/payment/create_bkash_payment/',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(request),
+                        success: function (data) {
+                            if (data && data.paymentID != null) {
+                                paymentID = data.paymentID;
+                                bKash.create().onSuccess(data); //pass the whole response data in bKash.create().onSucess() method as a parameter
+                            } else {
+                                bKash.create().onError();
+                            }
+                        },
+                        error: function () {
                             bKash.create().onError();
                         }
-                    },
-                    error: function () {
-                        console.log('error', data);
-                        bKash.create().onError();
-                    }
-                });
-            },
+                    });
+                },
 
-            executeRequestOnAuthorization: function () {
-                console.log('=> executeRequestOnAuthorization');
-                token = sessionStorage.getItem("token_id");
-                payment_id = sessionStorage.getItem("payment_id");
-                $.ajax({
-                    url: "excute-payment/" + token + "/" + paymentID,
-                    type: 'GET',
-                    contentType: 'application/json',
-                    success: function (data) {
-                        console.log('got data from execute  ..');
-                        console.log('data ::=>');
-                        console.log(data);
-
-                        data = JSON.parse(data);
-                        if (data && data.paymentID != null) {
-                            alert('[SUCCESS] data : ' + JSON.stringify(data));
-                            window.location.href = "success.html";
-                        } else {
+                executeRequestOnAuthorization: function () {
+                    $.ajax({
+                        url: '/payment/execute_bkash_payment/',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            "paymentID": paymentID
+                        }),
+                        success: function (data) {
+                            console.log(data)
+                            if (data && data.paymentID != null) {
+                                window.location.href = '{% url "payment:bkash_payment_success" %}'; //Merchant’s success
+                                page
+                            } else {
+                                bKash.execute().onError(window.location.href = '{% url "payment:bkash_payment_error" %}');
+                            }
+                        },
+                        error: function (err) {
+                            console.log(err)
                             bKash.execute().onError();
                         }
-                    },
-                    error: function () {
-                        bKash.execute().onError();
-                    }
-                });
-            }
-        });
-
-        console.log("Right after init ");
-
-
-    });
-
-    function callReconfigure(val) {
-        bKash.reconfigure(val);
-    }
-
-    function clickPayButton() {
-        $("#bKash_button").trigger('click');
-    }
-
-
-</script>
-
+                    });
+                }
+            });
+        </script>
 </body>
 </html>
