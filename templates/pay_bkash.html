@@ -25,9 +25,8 @@
     bKash.init({
         paymentMode: 'checkout', //fixed value ‘checkout’
 
-
         paymentRequest: {
-            amount: 1500,
+            amount: {{ amount }},
             intent: 'sale'
         },
         createRequest: function (request) {

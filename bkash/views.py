@@ -22,7 +22,7 @@ from .models import *
 
 
 def pay_bkash(request):
-    return render(request, 'pay_bkash.html')
+    return render(request, 'pay_bkash.html', {'amount': '100'})
 
 
 @method_decorator(csrf_exempt, name='dispatch')

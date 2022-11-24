@@ -124,15 +124,14 @@ BKASH_ERROR_DICT = {
 class BkashPayment:
     def get_token(self):
         if BkashToken.objects.all().exists():
-            token = BkashToken.objects.filter().first()
+            token = BkashToken.objects.all()[0]
             print('token query========', token)
             print('timezone now=========', timezone.now())
             print('update time === ', token.updated_at)
-            if token.updated_at < timezone.now():
-                print(token.updated_at)
-                token = self.refresh_token(token)
-                print('token', token)
-                return token.token
+            print(token.updated_at + timedelta(minutes=50))
+            print('token refresh call', token.updated_at)
+            token = self.refresh_token(token)
+            print('token', token)
             return token.token
         else:
             token = self.create_new_token()
@@ -163,7 +162,6 @@ class BkashPayment:
             token=response.get("id_token"),
             refresh_token=response.get("refresh_token"),
             expires_in=expires_in,
-            updated_at=datetime.now()
         )
         print('token', token)
 

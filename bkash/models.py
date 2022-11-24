@@ -12,12 +12,12 @@ def generate_tid():
 
 
 class BkashToken(models.Model):
-    token_id = models.CharField(default=generate_tid, max_length=100, verbose_name="Token Type")
+    token_id = models.CharField(default=generate_tid, max_length=100, verbose_name="Token ID")
     token_type = models.CharField(blank=True, max_length=100, verbose_name="Token Type")
-    token = models.CharField(blank=True, max_length=5000, verbose_name="Token")
-    refresh_token = models.CharField(blank=True, max_length=5000, verbose_name="Token")
+    token = models.TextField(blank=True, verbose_name="Token")
+    refresh_token = models.TextField(blank=True, verbose_name="Refresh Token")
     expires_in = models.DateTimeField()
-    updated_at = models.DateTimeField(auto_created=True, editable=True)
+    updated_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.token_id
@@ -32,7 +32,6 @@ class BkashPaymentRecord(models.Model):
     amount = models.CharField(max_length=50, blank=True)
     currency = models.CharField(max_length=20, blank=True)
     intent = models.CharField(max_length=20, blank=True)
-    merchantInvoiceNumber = models.CharField(max_length=30, blank=True)
     payment_response = models.TextField()
     transaction_id = models.CharField(max_length=100, blank=True)
     transaction_status = models.CharField(max_length=100, blank=True)
