@@ -8,7 +8,7 @@ from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
-from core.settings import BKASH_APP_KEY, BKASH_APP_SECRET, BKASH_APP_USERNAME, BKASH_APP_PASSWORD, \
+from bkashpayment.settings import BKASH_APP_KEY, BKASH_APP_SECRET, BKASH_APP_USERNAME, BKASH_APP_PASSWORD, \
     BKASH_API_BASE_URL, BKASH_APP_VERSION
 from django.http import HttpResponse, JsonResponse, QueryDict
 from django.utils import timezone
@@ -21,8 +21,12 @@ from .bkash import BkashPayment, BKASH_ERROR_DICT
 from .models import *
 
 
+def pay_bkash(request):
+    return render(request, 'pay_bkash.html')
+
+
 @method_decorator(csrf_exempt, name='dispatch')
-class CreateBkashToken(LoginRequiredMixin, BkashPayment, View):
+class CreateBkashToken(BkashPayment, View):
     def post(self, request, *args, **kwargs):
         body_unicode = self.request.body.decode('utf-8')
 
@@ -47,22 +51,22 @@ class CreateBkashToken(LoginRequiredMixin, BkashPayment, View):
         print('response json========', response)
         payment_id = response.get("paymentID")
         print(payment_id, 'create')
-        payment_detail = PaymentsDetails.objects.get(
-            current_uid=body["payment_details"])
-        payment_detail.payment_method = PaymentMethodEnum.bkash.value['key']
-        payment_detail.payment_status = PaymentStatusEnum.unpaid.value['key']
-        payment_detail.transaction_status = PaymentTransactionStatusEnum.initiated.value[
-            'key']
-        payment_detail.paid_time = timezone.now()
-        payment_detail.save()
+        # payment_detail = PaymentsDetails.objects.get(
+        #     current_uid=body["payment_details"])
+        # payment_detail.payment_method = PaymentMethodEnum.bkash.value['key']
+        # payment_detail.payment_status = PaymentStatusEnum.unpaid.value['key']
+        # payment_detail.transaction_status = PaymentTransactionStatusEnum.initiated.value[
+        #     'key']
+        # payment_detail.paid_time = timezone.now()
+        # payment_detail.save()
         BkashPaymentRecord.objects.create(
-            payment_id=payment_id, payment_details=payment_detail, payment_response=response)
+            payment_id=payment_id, payment_response=response)
 
         return JsonResponse(response)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class ExecuteBkashPayment(LoginRequiredMixin, BkashPayment, View):
+class ExecuteBkashPayment(BkashPayment, View):
     def post(self, request, *args, **kwargs):
         body_unicode = self.request.body.decode('utf-8')
         body = json.loads(body_unicode)
@@ -71,7 +75,7 @@ class ExecuteBkashPayment(LoginRequiredMixin, BkashPayment, View):
         payment_record = BkashPaymentRecord.objects.filter(
             payment_id=body['paymentID']).first()
         print('execute payment record =========', payment_record)
-        bkash_payment_current_uid = str(payment_record.payment_details)
+        # bkash_payment_current_uid = str(payment_record.payment_details)
 
         url = BKASH_API_BASE_URL + "/" + BKASH_APP_VERSION + "/checkout/payment/execute/" + \
               str(body['paymentID'])
@@ -100,16 +104,16 @@ class ExecuteBkashPayment(LoginRequiredMixin, BkashPayment, View):
             payment_record.is_paid = True
             payment_record.save()
 
-            payment_detail = PaymentsDetails.objects.get(
-                current_uid=bkash_payment_current_uid)
-            print('payment details === ', payment_detail)
-            payment_detail.payment_method = PaymentMethodEnum.bkash.value['key']
-            payment_detail.payment_status = PaymentStatusEnum.paid.value['key']
-            payment_detail.transaction_status = PaymentTransactionStatusEnum.completed.value[
-                'key']
-            payment_detail.paid_time = timezone.now()
-
-            payment_detail.save()
+            # payment_detail = PaymentsDetails.objects.get(
+            #     current_uid=bkash_payment_current_uid)
+            # print('payment details === ', payment_detail)
+            # payment_detail.payment_method = PaymentMethodEnum.bkash.value['key']
+            # payment_detail.payment_status = PaymentStatusEnum.paid.value['key']
+            # payment_detail.transaction_status = PaymentTransactionStatusEnum.completed.value[
+            #     'key']
+            # payment_detail.paid_time = timezone.now()
+            #
+            # payment_detail.save()
 
             # after successfull payment redirect to your desired page/url
             # return redirect(reverse('payment:bkash_payment_success'))
@@ -163,83 +167,81 @@ class BkashPaymentError(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        return render(request, 'users/error_payment.html', {'payment_method': PaymentMethodEnum.bkash.value['val']})
+        return render(request, 'error_payment.html')
 
 
 class BkashPaymentSuccess(View):
     def get(self, request, *args, **kwargs):
-        return render(request, 'users/success_payment.html', {'payment_method': PaymentMethodEnum.bkash.value['val']})
+        return render(request, 'success_payment.html')
 
-
-class BkashRefundView(LoginRequiredMixin, BkashPayment, View):
-    def get(self, request, *args, **kwargs):
-        form = BkashRefundForm()
-        context = {
-            'form': BkashRefundForm()
-        }
-
-        return render(request, 'bkash_refund.html', context)
-
-    def post(self, request, *args, **kwargs):
-        form = BkashRefundForm(request.POST)
-
-        if form.is_valid():
-            bkash_setup = BkashSetup.objects.all()[0]
-            print('setup ==== ', bkash_setup)
-            url = BKASH_API_BASE_URL + "/" + BKASH_APP_VERSION + "/checkout/payment/refund"
-
-            transaction_id = request.POST.get('transaction_id')
-
-            payment_record_obj = BkashPaymentRecord.objects.filter(
-                transaction_id=transaction_id).first()
-            print('payment record obj', payment_record_obj)
-            print(
-                f'paymentId : {payment_record_obj.payment_id} --- transactionId: {payment_record_obj.transaction_id}')
-
-            payload = "{\"paymentID\":\"" + payment_record_obj.payment_id + \
-                      "\",\"amount\":\"" + str(
-                payment_record_obj.amount) + "\",\"trxID\":\"" + payment_record_obj.transaction_id + \
-                      "\",\"sku\":\"Amar Iccha\",\"reason\":\"Amar Iccha\"}"
-            print('payload ====', payload)
-            headers = {
-                'authorization': self.get_token(),
-                'x-app-key': BKASH_APP_KEY
-            }
-
-            response = requests.request(
-                "POST", url, data=payload, headers=headers)
-            print('response===', response)
-            response = response.json()
-            print('response json=== ', response)
-            if "transactionStatus" in response.keys() and response.get("transactionStatus") == "Completed":
-
-                completed_time = response.get("completedTime")
-                original_trxID = response.get("originalTrxID")
-                refund_trxID = response.get("refundTrxID")
-                transaction_status = response.get("transactionStatus")
-                amount = response.get("amount")
-                currency = response.get("currency")
-                BkashRefund.objects.create(
-                    payment_details=payment_record_obj.payment_details,
-                    completed_time=completed_time,
-                    original_trxID=original_trxID,
-                    refund_trxID=refund_trxID,
-                    transaction_status=transaction_status,
-                    amount=amount,
-                    currency=currency
-                )
-                return HttpResponse('Success')
-
-            else:
-                return HttpResponse('something went wrong')
-
-        else:
-            context = {
-                'form': form
-            }
-
-            return render(request, 'bkash_refund.html', context)
-
-
-def pay_bkash(request):
-    return render(request, 'pay_bkash.html')
+#
+# class BkashRefundView(BkashPayment, View):
+#     def get(self, request, *args, **kwargs):
+#         form = BkashRefundForm()
+#         context = {
+#             'form': BkashRefundForm()
+#         }
+#
+#         return render(request, 'bkash_refund.html', context)
+#
+#     def post(self, request, *args, **kwargs):
+#         form = BkashRefundForm(request.POST)
+#
+#         if form.is_valid():
+#             bkash_setup = BkashSetup.objects.all()[0]
+#             print('setup ==== ', bkash_setup)
+#             url = BKASH_API_BASE_URL + "/" + BKASH_APP_VERSION + "/checkout/payment/refund"
+#
+#             transaction_id = request.POST.get('transaction_id')
+#
+#             payment_record_obj = BkashPaymentRecord.objects.filter(
+#                 transaction_id=transaction_id).first()
+#             print('payment record obj', payment_record_obj)
+#             print(
+#                 f'paymentId : {payment_record_obj.payment_id} --- transactionId: {payment_record_obj.transaction_id}')
+#
+#             payload = "{\"paymentID\":\"" + payment_record_obj.payment_id + \
+#                       "\",\"amount\":\"" + str(
+#                 payment_record_obj.amount) + "\",\"trxID\":\"" + payment_record_obj.transaction_id + \
+#                       "\",\"sku\":\"Amar Iccha\",\"reason\":\"Amar Iccha\"}"
+#             print('payload ====', payload)
+#             headers = {
+#                 'authorization': self.get_token(),
+#                 'x-app-key': BKASH_APP_KEY
+#             }
+#
+#             response = requests.request(
+#                 "POST", url, data=payload, headers=headers)
+#             print('response===', response)
+#             response = response.json()
+#             print('response json=== ', response)
+#             if "transactionStatus" in response.keys() and response.get("transactionStatus") == "Completed":
+#
+#                 completed_time = response.get("completedTime")
+#                 original_trxID = response.get("originalTrxID")
+#                 refund_trxID = response.get("refundTrxID")
+#                 transaction_status = response.get("transactionStatus")
+#                 amount = response.get("amount")
+#                 currency = response.get("currency")
+#                 BkashRefund.objects.create(
+#                     payment_details=payment_record_obj.payment_details,
+#                     completed_time=completed_time,
+#                     original_trxID=original_trxID,
+#                     refund_trxID=refund_trxID,
+#                     transaction_status=transaction_status,
+#                     amount=amount,
+#                     currency=currency
+#                 )
+#                 return HttpResponse('Success')
+#
+#             else:
+#                 return HttpResponse('something went wrong')
+#
+#         else:
+#             context = {
+#                 'form': form
+#             }
+#
+#             return render(request, 'bkash_refund.html', context)
+#
+#

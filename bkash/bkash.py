@@ -3,14 +3,15 @@ from django.db.models.functions import datetime
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
-from core.settings import BKASH_APP_KEY, BKASH_APP_SECRET, BKASH_APP_USERNAME, BKASH_APP_PASSWORD, \
-    BKASH_API_BASE_URL, BKASH_APP_VERSION
 from django.http import HttpResponse, JsonResponse, QueryDict
 from django.utils import timezone
 from datetime import timedelta
 from datetime import datetime
 import json
 import requests
+
+from bkashpayment.settings import BKASH_APP_KEY, BKASH_APP_SECRET, BKASH_APP_USERNAME, BKASH_APP_PASSWORD, \
+    BKASH_API_BASE_URL, BKASH_APP_VERSION
 from .models import *
 
 # def pay_bkash(request):
@@ -123,11 +124,11 @@ BKASH_ERROR_DICT = {
 class BkashPayment:
     def get_token(self):
         if BkashToken.objects.all().exists():
-            token = BkashToken.objects.all()[0]
+            token = BkashToken.objects.filter().first()
             print('token query========', token)
             print('timezone now=========', timezone.now())
             print('update time === ', token.updated_at)
-            if token.updated_at + timedelta(minutes=50) < timezone.now():
+            if token.updated_at < timezone.now():
                 print(token.updated_at)
                 token = self.refresh_token(token)
                 print('token', token)
@@ -161,7 +162,8 @@ class BkashPayment:
             token_type=response.get("token_type"),
             token=response.get("id_token"),
             refresh_token=response.get("refresh_token"),
-            expires_in=expires_in
+            expires_in=expires_in,
+            updated_at=datetime.now()
         )
         print('token', token)
 

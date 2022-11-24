@@ -1,0 +1,11 @@
+{
+  'paymentID': 'Q1N69NT1669265096864',
+  'createTime': '2022-11-24T04:44:56:996 GMT+0000',
+  'orgLogo': 'https://s3-ap-southeast-1.amazonaws.com/merchantlogo.sandbox.bka.sh/pgw-default.png',
+  'orgName': 'TestCheckoutDemoMerchant1',
+  'transactionStatus': 'Initiated',
+  'amount': '1500',
+  'currency': 'BDT',
+  'intent': 'sale',
+  'merchantInvoiceNumber': 'dc898626-e8d3-4160-ae53-5fc3b7b60cdd'
+}

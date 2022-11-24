@@ -15,67 +15,67 @@
 </head>
 
 <body>
-<a href="javascript:void(0)" id="bKash_button"> Pay with bKash </a > <br>
-    <a href="{% url 'payment:bkash_refund' %}"> Bkash Refund </a > <br> <br>
+<a href="javascript:void(0)" id="bKash_button"> Pay with bKash </a> <br>
+{% comment %}<a href="{% url 'payment:bkash_refund' %}"> Bkash Refund </a > <br> <br>{% endcomment %}
 
-        <hr>
+<hr>
 
-        <script type="text/javascript">
-            var paymentID = '';
-            bKash.init({
-                paymentMode: 'checkout', //fixed value ‘checkout’
+<script type="text/javascript">
+    var paymentID = '';
+    bKash.init({
+        paymentMode: 'checkout', //fixed value ‘checkout’
 
 
-                paymentRequest: {
-                    amount: 1500,
-                    intent: 'sale'
+        paymentRequest: {
+            amount: 1500,
+            intent: 'sale'
+        },
+        createRequest: function (request) {
+            //request object is basically the paymentRequest object, automatically pushed by the script in createRequest method
+            $.ajax({
+                url: '/bkash/create_bkash_payment/',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(request),
+                success: function (data) {
+                    if (data && data.paymentID != null) {
+                        paymentID = data.paymentID;
+                        bKash.create().onSuccess(data); //pass the whole response data in bKash.create().onSucess() method as a parameter
+                    } else {
+                        bKash.create().onError();
+                    }
                 },
-                createRequest: function (request) {
-                    //request object is basically the paymentRequest object, automatically pushed by the script in createRequest method
-                    $.ajax({
-                        url: '/payment/create_bkash_payment/',
-                        type: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify(request),
-                        success: function (data) {
-                            if (data && data.paymentID != null) {
-                                paymentID = data.paymentID;
-                                bKash.create().onSuccess(data); //pass the whole response data in bKash.create().onSucess() method as a parameter
-                            } else {
-                                bKash.create().onError();
-                            }
-                        },
-                        error: function () {
-                            bKash.create().onError();
-                        }
-                    });
-                },
-
-                executeRequestOnAuthorization: function () {
-                    $.ajax({
-                        url: '/payment/execute_bkash_payment/',
-                        type: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({
-                            "paymentID": paymentID
-                        }),
-                        success: function (data) {
-                            console.log(data)
-                            if (data && data.paymentID != null) {
-                                window.location.href = '{% url "payment:bkash_payment_success" %}'; //Merchant’s success
-                                page
-                            } else {
-                                bKash.execute().onError(window.location.href = '{% url "payment:bkash_payment_error" %}');
-                            }
-                        },
-                        error: function (err) {
-                            console.log(err)
-                            bKash.execute().onError();
-                        }
-                    });
+                error: function () {
+                    bKash.create().onError();
                 }
             });
-        </script>
+        },
+
+        executeRequestOnAuthorization: function () {
+            $.ajax({
+                url: '/bkash/execute_bkash_payment/',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    "paymentID": paymentID
+                }),
+                success: function (data) {
+                    console.log(data)
+                    if (data && data.paymentID != null) {
+                        window.location.href = '{% url 'bkash:bkash_payment_success' %}'; //Merchant’s success
+                        page
+                    } else {
+                        bKash.execute().onError(window.location.href = '{% url 'bkash:bkash_payment_error' %}');
+                    }
+                },
+                error: function (err) {
+                    console.log(err)
+                    bKash.execute().onError();
+                }
+            });
+        }
+    });
+</script>
 
 </body>
 </html>
